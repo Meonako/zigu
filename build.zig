@@ -20,8 +20,14 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{ .name = "zigu", .root_source_file = .{ .path = "src/main.zig" }, .target = target, .optimize = optimize, .link_libc = true });
     exe.step.dependOn(&rust.step);
-    exe.addLibraryPath(.{ .path = "zig-out/release" });
-    exe.linkSystemLibrary("detect");
+    if (target.result.os.tag == .windows) {
+        // Windows required DLLs to be in the same directory as the executable
+        // So don't forget to copy them over
+        exe.addObjectFile(.{ .path = "zig-out/release/detect.dll" });
+    } else {
+        exe.addLibraryPath(.{ .path = "zig-out/release" });
+        exe.linkSystemLibrary("detect");
+    }
 
     b.installArtifact(exe);
 

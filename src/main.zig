@@ -156,14 +156,14 @@ pub fn main() !void {
     stdout_writer.print("Download link for you system: {s}\n", .{file_url}) catch {};
     stdout_writer.writeAll("Downloading...") catch {};
 
-    const download_req = try get(&client, &headers, file_url);
-    defer allocator.free(download_req);
+    const downloaded_file = try get(&client, &headers, file_url);
+    defer allocator.free(downloaded_file);
 
     const cwd = std.fs.cwd();
     const file_name = path.basename(file_url);
 
     try cwd.writeFile2(.{
-        .data = download_req,
+        .data = downloaded_file,
         .sub_path = file_name,
     });
 

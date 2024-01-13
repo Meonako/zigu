@@ -15,12 +15,13 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    const rust = b.addSystemCommand(&[_][]const u8{ "cargo", "build", "--release", "--manifest-path", "detect/Cargo.toml" });
-    rust.setEnvironmentVariable("CARGO_TARGET_DIR", "S:\\Data\\PROGRAMMING\\Zig\\zigu\\zig-out");
+    var rust = b.addSystemCommand(&[_][]const u8{ "cargo", "build", "--release", "--manifest-path", "detect/Cargo.toml" });
+    rust.setEnvironmentVariable("CARGO_TARGET_DIR", "./zig-out");
 
     const exe = b.addExecutable(.{ .name = "zigu", .root_source_file = .{ .path = "src/main.zig" }, .target = target, .optimize = optimize, .link_libc = true });
     exe.step.dependOn(&rust.step);
-    exe.addObjectFile(.{ .path = "detect/target/release/detect.dll" });
+    exe.addLibraryPath(.{ .path = "zig-out/release" });
+    exe.linkSystemLibrary("detect");
 
     b.installArtifact(exe);
 

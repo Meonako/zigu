@@ -7,7 +7,7 @@ const os = std.os;
 
 const detect = @import("detect.zig");
 
-const MAX_SIZE: usize = 1_048_576;
+const MAX_SIZE: usize = 1024 * 1024 * 1024;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -203,6 +203,6 @@ fn get(client: *http.Client, headers: *http.Headers, url: []const u8) ![]const u
         return error.NotOk;
     }
 
-    const body = try request.reader().readAllAlloc(client.allocator, 1024 * 1024 * 1024);
+    const body = try request.reader().readAllAlloc(client.allocator, MAX_SIZE);
     return body;
 }

@@ -7,6 +7,7 @@ const os = std.os;
 
 const detect = @import("detect.zig");
 
+const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
 const MAX_SIZE: usize = 1024 * 1024 * 1024;
 
 pub fn main() !void {
@@ -40,7 +41,7 @@ pub fn main() !void {
 
     const request_thread = try std.Thread.spawn(.{}, getZigJsonIndex, .{ &client, &headers, &zig_index_json });
 
-    const version: []const u8 = args[1];
+    const query_version: []const u8 = args[1];
 
     // TODO:  Find a way to capture only stdout
     const result = try std.process.Child.run(.{
@@ -62,7 +63,7 @@ pub fn main() !void {
     const zig_version = zig_output.value.object.get("version");
     if (zig_version) |v| {
         stdout_writer.print("Current Zig Version: {s}\n", .{v.string}) catch {};
-        if (std.mem.eql(u8, v.string, version)) {
+        if (std.mem.eql(u8, v.string, query_version)) {
             stdout_writer.writeAll("Already up to date\n") catch {};
         }
     }
@@ -96,8 +97,8 @@ pub fn main() !void {
 
     const zig_index = zig_index_json.?;
 
-    const file_url = blk: {
-        if (std.mem.eql(u8, version, "nightly")) {
+    const target_version = blk: {
+        if (std.mem.eql(u8, query_version, "nightly")) {
             const master = zig_index.value.object.get("master") orelse {
                 stdout_writer.writeAll("Nightly version not found\n") catch {};
                 return;
@@ -114,46 +115,55 @@ pub fn main() !void {
                 return;
             }
 
-            const build = master.object.get(system);
-            if (build == null) {
-                stdout_writer.print("This version is not available for your system ({s})\n", .{system}) catch {};
+            break :blk master;
+        } else if (std.mem.eql(u8, query_version, "latest")) {
+            const keys = zig_index.value.object.keys();
+
+            // Dirty way to get latest version
+            // MAYBE:  TODO:  Implement version sorting so we can get latest version properly
+            const latest = keys[1];
+
+            stdout_writer.print("Latest version: {s}\n", .{latest}) catch {};
+
+            const latest_version = zig_index.value.object.get(latest).?;
+            const latest_date = latest_version.object.get("date").?;
+            stdout_writer.print("Latest version date: {s}\n", .{latest_date.string}) catch {};
+
+            if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
+                stdout_writer.writeAll("You are using the latest nightly\n") catch {};
                 return;
             }
 
-            const file_url = build.?.object.get("tarball").?.string;
-            break :blk file_url;
-        } else if (std.mem.eql(u8, version, "latest")) {
-            // TODO:  Implement version sorting and get the latest version
-            return;
+            break :blk latest_version;
         } else {
             // TODO:  Implement version resolve by prefix like so
             //                 0   => 0.11.0
             //                 0.8 => 0.8.1
-            const version_obj = zig_index.value.object.get(version) orelse {
+            const version_obj = zig_index.value.object.get(query_version) orelse {
                 stdout_writer.print("Version not found\n", .{}) catch {};
                 return;
             };
 
             const date = version_obj.object.get("date").?;
-            stdout_writer.print("Version: {s}\nVersion date: {s}\n", .{ version, date.string }) catch {};
+            stdout_writer.print("Version: {s}\nVersion date: {s}\n", .{ query_version, date.string }) catch {};
 
-            if (zig_version != null and std.mem.eql(u8, version, zig_version.?.string)) {
-                stdout_writer.writeAll("You are using the latest version\n") catch {};
+            //
+            if (zig_version != null and std.mem.eql(u8, query_version, zig_version.?.string)) {
+                stdout_writer.writeAll("You are using the same version\n") catch {};
                 return;
             }
 
-            const build = version_obj.object.get(system);
-            if (build == null) {
-                stdout_writer.print("This version is not available for your system ({s})\n", .{system}) catch {};
-                return;
-            }
-
-            const file_url = build.?.object.get("tarball").?.string;
-            break :blk file_url;
+            break :blk version_obj;
         }
     };
 
-    stdout_writer.print("Download link for you system: {s}\n", .{file_url}) catch {};
+    const build = target_version.object.get(system) orelse {
+        stdout_writer.print("This version is not available for your system ({s})\n", .{system}) catch {};
+        return;
+    };
+    const file_url = build.object.get("tarball").?.string;
+
+    stdout_writer.print("Download link for your system: {s}\n", .{file_url}) catch {};
     stdout_writer.writeAll("Downloading...") catch {};
 
     const downloaded_file = try get(&client, &headers, file_url);
@@ -171,12 +181,14 @@ pub fn main() !void {
 
     stdout_writer.print("\rExtracting to {s}...", .{zig_folder}) catch {};
 
-    var tar = std.process.Child.init(&[_][]const u8{ "tar", "-xf", file_name, "-C", zig_folder, "--strip-components", "1" }, allocator);
-    try tar.spawn();
-    const term = try tar.wait();
+    const tar = try std.process.Child.run(.{
+        .allocator = allocator,
+        .argv = &[_][]const u8{ "tar", "-xf", file_name, "-C", zig_folder, "--strip-components", "1" },
+    });
 
-    if (term != .Exited or term.Exited != 0) {
+    if (tar.term != .Exited or tar.term.Exited != 0) {
         stdout_writer.writeAll("\rSomething went wrong while extracting tarball\n") catch {};
+        stdout_writer.print("Tar error: {s}\n", .{tar.stderr}) catch {};
     } else {
         stdout_writer.print("\rSuccessfully extracted to {s}\n", .{zig_folder}) catch {};
     }
@@ -185,7 +197,7 @@ pub fn main() !void {
 }
 
 fn getZigJsonIndex(client: *http.Client, headers: *http.Headers, out: *?json.Parsed(json.Value)) !void {
-    const body = try get(client, headers, "https://ziglang.org/download/index.json");
+    const body = try get(client, headers, ZIG_VERSION_INDEX);
 
     out.* = try json.parseFromSlice(json.Value, client.allocator, body, .{});
     client.allocator.free(body);

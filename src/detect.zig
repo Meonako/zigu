@@ -455,13 +455,6 @@ pub const struct_FFISlice = extern struct {
 
     const Self = @This();
 
-    pub fn fromString(string: []const u8) Self {
-        return .{
-            .ptr = string.ptr,
-            .len = string.len,
-        };
-    }
-
     pub fn toSlice(self: Self) []const u8 {
         return self.ptr[0..self.len];
     }

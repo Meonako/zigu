@@ -27,22 +27,25 @@ const HELP_MESSAGE =
     \\      zigu 1         Will resolve to 1.x.x version if any 
 ;
 
+// Windows can't have global stdout
+var stdout_writer: std.io.Writer(std.fs.File, std.os.WriteError, std.fs.File.write) = undefined;
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
     const stdout = std.io.getStdOut();
-    const stdout_writer = stdout.writer();
+    stdout_writer = stdout.writer();
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
-        stdout_writer.writeAll(HELP_MESSAGE) catch {};
+        print(HELP_MESSAGE);
         return;
     } else if (std.mem.eql(u8, args[1], "help")) {
-        stdout_writer.writeAll(HELP_MESSAGE) catch {};
+        print(HELP_MESSAGE);
         return;
     }
 
@@ -70,21 +73,22 @@ pub fn main() !void {
     });
     // We don't need stderr
     allocator.free(result.stderr);
-    defer allocator.free(result.stdout);
 
     if (result.term.Exited != 0) {
-        stdout_writer.print("Zig exit with code: {d}\n", .{result.term.Exited}) catch {};
+        printf("Zig exit with code: {d}\n", .{result.term.Exited});
         return;
     }
 
     const zig_output = try json.parseFromSlice(json.Value, allocator, result.stdout, .{});
     defer zig_output.deinit();
 
+    allocator.free(result.stdout);
+
     const zig_version = zig_output.value.object.get("version");
     if (zig_version) |v| {
-        stdout_writer.print("< Current Zig Version: {s}\n", .{v.string}) catch {};
+        printf("< Current Zig Version: {s}\n", .{v.string});
         if (std.mem.eql(u8, v.string, query_version)) {
-            stdout_writer.writeAll("Already up to date\n") catch {};
+            print("Already up to date\n");
         }
     }
 
@@ -98,20 +102,20 @@ pub fn main() !void {
     };
 
     if (std.mem.eql(u8, zig_folder, "zig")) {
-        stdout_writer.writeAll("Zig folder not found. Will extract to `zig` in current directory") catch {};
+        print("Zig folder not found. Will extract to `zig` in current directory");
     } else {
-        stdout_writer.print("< Zig folder: {s}\n", .{zig_folder}) catch {};
+        printf("< Zig folder: {s}\n", .{zig_folder});
     }
 
     var ffi_system = detect.arch_os();
     defer detect.free_string(ffi_system.ptr, ffi_system.len);
     const system = ffi_system.toSlice();
-    stdout_writer.print("< Your system is: {s}\n\n", .{system}) catch {};
+    printf("< Your system is: {s}\n\n", .{system});
 
     request_thread.join();
 
     if (zig_index_json == null) {
-        stdout_writer.writeAll("Something went wrong while getting all zig versions\n") catch {};
+        print("Something went wrong while getting all zig versions\n");
         return;
     }
 
@@ -120,18 +124,18 @@ pub fn main() !void {
     const target_version = blk: {
         if (std.mem.eql(u8, query_version, "nightly")) {
             const master = zig_index.value.object.get("master") orelse {
-                stdout_writer.writeAll("Nightly version not found\n") catch {};
+                print("Nightly version not found\n");
                 return;
             };
 
             const master_version = master.object.get("version").?;
-            stdout_writer.print("> Nightly version: {s}\n", .{master_version.string}) catch {};
+            printf("> Nightly version: {s}\n", .{master_version.string});
 
             const master_date = master.object.get("date").?;
-            stdout_writer.print("> Nightly version date: {s}\n", .{master_date.string}) catch {};
+            printf("> Nightly version date: {s}\n", .{master_date.string});
 
             if (zig_version != null and std.mem.eql(u8, master_version.string, zig_version.?.string)) {
-                stdout_writer.writeAll("> You are using the latest nightly\n") catch {};
+                print("> You are using the latest nightly\n");
                 return;
             }
 
@@ -143,29 +147,29 @@ pub fn main() !void {
             // MAYBE:  TODO:  Implement version sorting so we can get latest version properly
             const latest = keys[1];
 
-            stdout_writer.print("> Latest version: {s}\n", .{latest}) catch {};
+            printf("> Latest version: {s}\n", .{latest});
 
             const latest_version = zig_index.value.object.get(latest).?;
             const latest_date = latest_version.object.get("date").?;
-            stdout_writer.print("> Latest version date: {s}\n", .{latest_date.string}) catch {};
+            printf("> Latest version date: {s}\n", .{latest_date.string});
 
             if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
-                stdout_writer.writeAll("> You are using the latest nightly\n") catch {};
+                print("> You are using the latest nightly\n");
                 return;
             }
 
             break :blk latest_version;
         } else if (std.mem.eql(u8, query_version, "list")) {
-            stdout_writer.writeAll("> Available versions:\n") catch {};
+            print("> Available versions:\n");
             for (zig_index.value.object.keys(), 0..) |key, idx| {
                 if (key.len == 0) continue;
 
-                stdout_writer.print("\t{s}", .{key}) catch {};
+                printf("\t{s}", .{key});
 
                 if (idx % 3 == 0) {
-                    stdout_writer.writeAll("\n") catch {};
+                    print("\n");
                 } else {
-                    stdout_writer.writeAll("\t") catch {};
+                    print("\t");
                 }
             }
             return;
@@ -180,19 +184,19 @@ pub fn main() !void {
                     }
                 }
 
-                stdout_writer.writeAll("Version not found\n") catch {};
+                print("Version not found\n");
                 return;
             };
 
             const date = version_obj.object.get("date").?;
-            stdout_writer.print(
+            printf(
                 \\> Verions: {s}
                 \\> Version Date: {s}
                 \\
-            , .{ resolve_version, date.string }) catch {};
+            , .{ resolve_version, date.string });
 
             if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?.string)) {
-                stdout_writer.writeAll("> You are using the same version\n") catch {};
+                print("> You are using the same version\n");
                 return;
             }
 
@@ -201,13 +205,13 @@ pub fn main() !void {
     };
 
     const build = target_version.object.get(system) orelse {
-        stdout_writer.print("This version is not available for your system ({s})\n", .{system}) catch {};
+        printf("This version is not available for your system ({s})\n", .{system});
         return;
     };
     const file_url = build.object.get("tarball").?.string;
 
-    stdout_writer.print("> Download link for your system: {s}\n", .{file_url}) catch {};
-    stdout_writer.writeAll("< Downloading...") catch {};
+    printf("> Download link for your system: {s}\n", .{file_url});
+    print("< Downloading...");
 
     const downloaded_file = try get(&client, &headers, file_url);
     defer allocator.free(downloaded_file);
@@ -222,7 +226,7 @@ pub fn main() !void {
 
     try cwd.makePath(zig_folder);
 
-    stdout_writer.print("\r> Extracting to {s}...", .{zig_folder}) catch {};
+    printf("\r> Extracting to {s}...", .{zig_folder});
 
     const tar = try std.process.Child.run(.{
         .allocator = allocator,
@@ -230,13 +234,21 @@ pub fn main() !void {
     });
 
     if (tar.term != .Exited or tar.term.Exited != 0) {
-        stdout_writer.writeAll("\rSomething went wrong while extracting tarball\n") catch {};
-        stdout_writer.print("Tar error: {s}\n", .{tar.stderr}) catch {};
+        print("\rSomething went wrong while extracting tarball\n");
+        printf("Tar error: {s}\n", .{tar.stderr});
     } else {
-        stdout_writer.print("\r> Successfully extracted to {s}\n", .{zig_folder}) catch {};
+        printf("\r> Successfully extracted to {s}\n", .{zig_folder});
     }
 
     cwd.deleteFile(file_name) catch {};
+}
+
+fn print(msg: []const u8) void {
+    stdout_writer.writeAll(msg) catch return;
+}
+
+fn printf(comptime fmt: []const u8, args: anytype) void {
+    stdout_writer.print(fmt, args) catch return;
 }
 
 fn getZigJsonIndex(client: *http.Client, headers: *http.Headers, out: *?json.Parsed(json.Value)) !void {

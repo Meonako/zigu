@@ -5,8 +5,27 @@ const path = std.fs.path;
 
 const detect = @import("detect.zig");
 
-const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
 const MAX_SIZE: usize = 1024 * 1024 * 1024;
+const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
+const HELP_MESSAGE =
+    \\ Usage:
+    \\      zigu <command>
+    \\
+    \\ Commands:
+    \\      list           Show all available versions
+    \\      latest         Install latest stable version
+    \\      nightly        Install latest nightly version
+    \\      [version]      Install specified version. 
+    \\                     Will resolve to a latest version with the provided prefix
+    \\      help           Show this help message
+    \\
+    \\ Examples:
+    \\      zigu latest
+    \\
+    \\      zigu 0         
+    \\      zigu 0.10      Will resolve to 0.10.1
+    \\      zigu 1         Will resolve to 1.x.x version if any 
+;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -20,7 +39,10 @@ pub fn main() !void {
     defer std.process.argsFree(allocator, args);
 
     if (args.len < 2) {
-        stdout_writer.print("Usage: zigu <latest | nightly | [version]>\n", .{}) catch {};
+        stdout_writer.writeAll(HELP_MESSAGE) catch {};
+        return;
+    } else if (std.mem.eql(u8, args[1], "help")) {
+        stdout_writer.writeAll(HELP_MESSAGE) catch {};
         return;
     }
 

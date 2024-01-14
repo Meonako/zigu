@@ -133,6 +133,20 @@ pub fn main() !void {
             }
 
             break :blk latest_version;
+        } else if (std.mem.eql(u8, query_version, "list")) {
+            stdout_writer.writeAll("> Available versions:\n") catch {};
+            for (zig_index.value.object.keys(), 0..) |key, idx| {
+                if (key.len == 0) continue;
+
+                stdout_writer.print("\t{s}", .{key}) catch {};
+
+                if (idx % 3 == 0) {
+                    stdout_writer.writeAll("\n") catch {};
+                } else {
+                    stdout_writer.writeAll("\t") catch {};
+                }
+            }
+            return;
         } else {
             // Dirty way to resolve version
             var resolve_version = query_version;

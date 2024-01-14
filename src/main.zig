@@ -136,19 +136,24 @@ pub fn main() !void {
 
             break :blk latest_version;
         } else {
-            // TODO:  Implement version resolve by prefix like so
-            //                 0   => 0.11.0
-            //                 0.8 => 0.8.1
-            const version_obj = zig_index.value.object.get(query_version) orelse {
-                stdout_writer.print("Version not found\n", .{}) catch {};
+            // Dirty way to resolve version
+            var resolve_version = query_version;
+            const version_obj = zig_index.value.object.get(resolve_version) orelse prefix: {
+                for (zig_index.value.object.keys()) |key| {
+                    if (std.mem.startsWith(u8, key, resolve_version)) {
+                        resolve_version = key;
+                        break :prefix zig_index.value.object.get(key).?;
+                    }
+                }
+
+                stdout_writer.writeAll("Version not found\n") catch {};
                 return;
             };
 
             const date = version_obj.object.get("date").?;
-            stdout_writer.print("Version: {s}\nVersion date: {s}\n", .{ query_version, date.string }) catch {};
+            stdout_writer.print("Version: {s}\nVersion date: {s}\n", .{ resolve_version, date.string }) catch {};
 
-            //
-            if (zig_version != null and std.mem.eql(u8, query_version, zig_version.?.string)) {
+            if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?.string)) {
                 stdout_writer.writeAll("You are using the same version\n") catch {};
                 return;
             }

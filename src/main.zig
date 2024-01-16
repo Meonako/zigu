@@ -7,24 +7,25 @@ const detect = @import("detect.zig");
 
 const MAX_SIZE: usize = 1024 * 1024 * 1024;
 const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
+const ZIG_REPO_COMPARE = "https://github.com/ziglang/zig/compare/";
 const HELP_MESSAGE =
     \\ Usage:
     \\      zigu <command>
     \\
     \\ Commands:
-    \\      list           Show all available versions
-    \\      latest         Install latest stable version
-    \\      nightly        Install latest nightly version
-    \\      [version]      Install specified version. 
-    \\                     Will resolve to a latest version with the provided prefix
-    \\      help           Show this help message
+    \\      list                    Show all available versions
+    \\      latest                  Install latest stable version
+    \\      nightly | master        Install latest nightly version
+    \\      [version]               Install specified version. 
+    \\                              Will resolve to a latest version with the provided prefix
+    \\      help                    Show this help message
     \\
     \\ Examples:
     \\      zigu latest
     \\
     \\      zigu 0         
-    \\      zigu 0.10      Will resolve to 0.10.1
-    \\      zigu 1         Will resolve to 1.x.x version if any 
+    \\      zigu 0.10               Will resolve to 0.10.1
+    \\      zigu 1                  Will resolve to 1.x.x version if any 
 ;
 
 // Windows can't have global stdout
@@ -85,10 +86,16 @@ pub fn main() !void {
     allocator.free(result.stdout);
 
     const zig_version = zig_output.value.object.get("version");
+    var zig_commit: ?[]const u8 = null;
     if (zig_version) |v| {
-        printf("< Current Zig Version: {s}\n", .{v.string});
-        if (std.mem.eql(u8, v.string, query_version)) {
+        const vstr = v.string;
+        printf("< Current Zig Version: {s}\n", .{vstr});
+        if (std.mem.eql(u8, vstr, query_version)) {
             print("Already up to date\n");
+        } else if (std.mem.containsAtLeast(u8, vstr, 1, "+")) {
+            var iter = std.mem.splitScalar(u8, vstr, '+');
+            _ = iter.next().?;
+            zig_commit = iter.next();
         }
     }
 
@@ -121,8 +128,10 @@ pub fn main() !void {
 
     const zig_index = zig_index_json.?;
 
+    const is_nightly = std.mem.eql(u8, query_version, "nightly") or std.mem.eql(u8, query_version, "master");
+
     const target_version = blk: {
-        if (std.mem.eql(u8, query_version, "nightly")) {
+        if (is_nightly) {
             const master = zig_index.value.object.get("master") orelse {
                 print("Nightly version not found\n");
                 return;
@@ -238,6 +247,19 @@ pub fn main() !void {
         printf("Tar error: {s}\n", .{tar.stderr});
     } else {
         printf("\r> Successfully extracted to {s}\n", .{zig_folder});
+
+        if (is_nightly and
+            std.mem.containsAtLeast(u8, file_name, 1, "+") and
+            zig_commit != null)
+        blk: {
+            var iter = std.mem.splitScalar(u8, file_name, '+');
+            _ = iter.next().?;
+
+            const commit_and_ext = iter.next() orelse break :blk;
+            const commit_hash = path.stem(commit_and_ext);
+
+            printf("\n> Changelog: {s}{s}..{s}\n", .{ ZIG_REPO_COMPARE, zig_commit.?, commit_hash });
+        }
     }
 
     cwd.deleteFile(file_name) catch {};

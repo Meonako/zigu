@@ -1,11 +1,13 @@
 const std = @import("std");
+const io = std.io;
 const json = std.json;
 const http = std.http;
-const path = std.fs.path;
+const fs = std.fs;
+const path = fs.path;
 
 const detect = @import("detect.zig");
 
-const MAX_SIZE: usize = 1024 * 1024 * 1024;
+const MAX_BODY_SIZE: usize = 1024 * 1024 * 1024;
 const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
 const ZIG_REPO_COMPARE = "https://github.com/ziglang/zig/compare/";
 const HELP_MESSAGE =
@@ -28,16 +30,15 @@ const HELP_MESSAGE =
     \\      zigu 1                  Will resolve to 1.x.x version if any 
 ;
 
-// Windows can't have global stdout
-var stdout_writer: std.io.Writer(std.fs.File, std.os.WriteError, std.fs.File.write) = undefined;
+/// Windows can't have global stdout so we need to declare it in `main`
+var stdout_writer: io.Writer(fs.File, std.os.WriteError, fs.File.write) = undefined;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const stdout = std.io.getStdOut();
-    stdout_writer = stdout.writer();
+    stdout_writer = io.getStdOut().writer();
 
     const args = try std.process.argsAlloc(allocator);
     defer std.process.argsFree(allocator, args);
@@ -57,7 +58,7 @@ pub fn main() !void {
         }
     }
 
-    var client = http.Client{ .allocator = allocator, .next_https_rescan_certs = true };
+    var client = http.Client{ .allocator = allocator };
     defer client.deinit();
 
     var headers = http.Headers.init(allocator);
@@ -74,6 +75,7 @@ pub fn main() !void {
     });
     // We don't need stderr
     allocator.free(result.stderr);
+    defer allocator.free(result.stdout);
 
     if (result.term.Exited != 0) {
         printf("Zig exit with code: {d}\n", .{result.term.Exited});
@@ -83,15 +85,16 @@ pub fn main() !void {
     const zig_output = try json.parseFromSlice(json.Value, allocator, result.stdout, .{});
     defer zig_output.deinit();
 
-    allocator.free(result.stdout);
-
     const zig_version = zig_output.value.object.get("version");
     var zig_commit: ?[]const u8 = null;
     if (zig_version) |v| {
         const vstr = v.string;
+
         printf("< Current Zig Version: {s}\n", .{vstr});
+
         if (std.mem.eql(u8, vstr, query_version)) {
             print("Already up to date\n");
+            return;
         } else if (std.mem.containsAtLeast(u8, vstr, 1, "+")) {
             var iter = std.mem.splitScalar(u8, vstr, '+');
             _ = iter.next().?;
@@ -292,6 +295,6 @@ fn get(client: *http.Client, headers: *http.Headers, url: []const u8) ![]const u
         return error.NotOk;
     }
 
-    const body = try request.reader().readAllAlloc(client.allocator, MAX_SIZE);
+    const body = try request.reader().readAllAlloc(client.allocator, MAX_BODY_SIZE);
     return body;
 }

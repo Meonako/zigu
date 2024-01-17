@@ -1,11 +1,11 @@
 const std = @import("std");
+const builtin = @import("builtin");
+const ansi = @import("ansi.zig");
 const io = std.io;
 const json = std.json;
 const http = std.http;
 const fs = std.fs;
 const path = fs.path;
-const builtin = @import("builtin");
-const ansi = @import("ansi.zig");
 
 const MAX_BODY_SIZE: usize = 1024 * 1024 * 1024;
 const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";

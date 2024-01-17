@@ -25,9 +25,9 @@ const HELP_MESSAGE =
     \\ Examples:
     \\      zigu latest
     \\
-    \\      zigu 0         
-    \\      zigu 0.10               Will resolve to 0.10.1
-    \\      zigu 1                  Will resolve to 1.x.x version if any 
+    \\      zigu 0                  Will resolve to latest 0.x.x version (i.e. 0.11.0) if any  
+    \\      zigu 0.10               Will resolve to latest 0.10 version (i.e. 0.10.1) if any
+    \\      zigu 1                  Will resolve to latest 1.x.x version if any 
 ;
 const OS = @tagName(builtin.os.tag);
 const ARCH = @tagName(builtin.cpu.arch);

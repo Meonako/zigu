@@ -15,19 +15,7 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseFast });
 
-    var rust = b.addSystemCommand(&[_][]const u8{ "cargo", "build", "--release", "--manifest-path", "detect/Cargo.toml" });
-    rust.setEnvironmentVariable("CARGO_TARGET_DIR", "./zig-out");
-
-    const exe = b.addExecutable(.{ .name = "zigu", .root_source_file = .{ .path = "src/main.zig" }, .target = target, .optimize = optimize, .link_libc = true });
-    exe.step.dependOn(&rust.step);
-    if (target.result.os.tag == .windows) {
-        // Windows required DLLs to be in the same directory as the executable
-        // So don't forget to copy them over
-        exe.addObjectFile(.{ .path = "zig-out/release/detect.dll" });
-    } else {
-        exe.addLibraryPath(.{ .path = "zig-out/release" });
-        exe.linkSystemLibrary("detect");
-    }
+    const exe = b.addExecutable(.{ .name = "zigu", .root_source_file = .{ .path = "src/main.zig" }, .target = target, .optimize = optimize });
 
     b.installArtifact(exe);
 
@@ -58,7 +46,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
-        .link_libc = true,
     });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);

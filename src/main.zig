@@ -4,8 +4,7 @@ const json = std.json;
 const http = std.http;
 const fs = std.fs;
 const path = fs.path;
-
-const detect = @import("detect.zig");
+const builtin = @import("builtin");
 
 const MAX_BODY_SIZE: usize = 1024 * 1024 * 1024;
 const ZIG_VERSION_INDEX = "https://ziglang.org/download/index.json";
@@ -29,6 +28,8 @@ const HELP_MESSAGE =
     \\      zigu 0.10               Will resolve to 0.10.1
     \\      zigu 1                  Will resolve to 1.x.x version if any 
 ;
+const OS = @tagName(builtin.os.tag);
+const ARCH = @tagName(builtin.cpu.arch);
 
 /// Windows can't have global stdout so we need to declare it in `main`
 var stdout_writer: io.Writer(fs.File, std.os.WriteError, fs.File.write) = undefined;
@@ -46,8 +47,15 @@ pub fn main() !void {
     if (args.len < 2) {
         print(HELP_MESSAGE);
         return;
-    } else if (std.mem.eql(u8, args[1], "help")) {
+    }
+
+    const query_version: []const u8 = args[1];
+
+    if (std.mem.eql(u8, query_version, "help")) {
         print(HELP_MESSAGE);
+        return;
+    } else if (std.mem.eql(u8, query_version, "system")) {
+        printf("{s}-{s}\n", .{ ARCH, OS });
         return;
     }
 
@@ -65,8 +73,6 @@ pub fn main() !void {
     defer headers.deinit();
 
     const request_thread = try std.Thread.spawn(.{}, getZigJsonIndex, .{ &client, &headers, &zig_index_json });
-
-    const query_version: []const u8 = args[1];
 
     // TODO:  Find a way to capture only stdout
     const result = try std.process.Child.run(.{
@@ -117,9 +123,7 @@ pub fn main() !void {
         printf("< Zig folder: {s}\n", .{zig_folder});
     }
 
-    var ffi_system = detect.arch_os();
-    defer detect.free_string(ffi_system.ptr, ffi_system.len);
-    const system = ffi_system.toSlice();
+    const system = try std.fmt.allocPrint(allocator, "{s}-{s}", .{ ARCH, OS });
     printf("< Your system is: {s}\n\n", .{system});
 
     request_thread.join();
@@ -144,7 +148,7 @@ pub fn main() !void {
             printf("> Nightly version: {s}\n", .{master_version.string});
 
             const master_date = master.object.get("date").?;
-            printf("> Nightly version date: {s}\n", .{master_date.string});
+            printf("> Nightly version date: {s}\n\n", .{master_date.string});
 
             if (zig_version != null and std.mem.eql(u8, master_version.string, zig_version.?.string)) {
                 print("> You are using the latest nightly\n");
@@ -163,7 +167,7 @@ pub fn main() !void {
 
             const latest_version = zig_index.value.object.get(latest).?;
             const latest_date = latest_version.object.get("date").?;
-            printf("> Latest version date: {s}\n", .{latest_date.string});
+            printf("> Latest version date: {s}\n\n", .{latest_date.string});
 
             if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
                 print("> You are using the latest nightly\n");
@@ -205,6 +209,7 @@ pub fn main() !void {
                 \\> Verions: {s}
                 \\> Version Date: {s}
                 \\
+                \\
             , .{ resolve_version, date.string });
 
             if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?.string)) {
@@ -222,7 +227,6 @@ pub fn main() !void {
     };
     const file_url = build.object.get("tarball").?.string;
 
-    printf("> Download link for your system: {s}\n", .{file_url});
     print("< Downloading...");
 
     const downloaded_file = try get(&client, &headers, file_url);

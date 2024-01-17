@@ -128,7 +128,6 @@ pub fn main() !void {
 
     var str_buffer: [ARCH.len + OS.len + 1]u8 = undefined;
     const system = try std.fmt.bufPrint(&str_buffer, "{s}-{s}", .{ ARCH, OS });
-    // defer allocator.free(system);
     printlnf("< Your system is: " ++ LIGTHBLUE ++ "{s}" ++ ansi.Reset ++ "\n", .{system});
 
     request_thread.join();

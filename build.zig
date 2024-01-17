@@ -1,9 +1,33 @@
 const std = @import("std");
 
+const targets: []const std.Target.Query = &.{
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .musl },
+    .{ .cpu_arch = .x86_64, .os_tag = .linux, .abi = .gnu },
+    .{ .cpu_arch = .x86_64, .os_tag = .windows },
+};
+
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
+    const b_all = b.option(bool, "build-all", "Build for all targets") orelse false;
+
+    if (b_all) {
+        for (targets) |t| {
+            const exe = b.addExecutable(.{
+                .name = "zigu",
+                .root_source_file = .{ .path = "src/main.zig" },
+                .target = b.resolveTargetQuery(t),
+                .optimize = .ReleaseFast,
+            });
+
+            const target_output = b.addInstallArtifact(exe, .{ .dest_dir = .{ .override = .{ .custom = try t.zigTriple(b.allocator) } } });
+
+            b.getInstallStep().dependOn(&target_output.step);
+        }
+        return;
+    }
+
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
     // means any target is allowed, and the default is native. Other options

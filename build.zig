@@ -10,9 +10,9 @@ const targets: []const std.Target.Query = &.{
 // declaratively construct a build graph that will be executed by an external
 // runner.
 pub fn build(b: *std.Build) !void {
-    const b_all = b.option(bool, "build-all", "Build for all targets") orelse false;
+    const all = b.option(bool, "all", "Build for all targets") orelse false;
 
-    if (b_all) {
+    if (all) {
         for (targets) |t| {
             const exe = b.addExecutable(.{
                 .name = "zigu",

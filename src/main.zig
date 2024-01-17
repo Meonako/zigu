@@ -244,6 +244,7 @@ pub fn main() !void {
         .data = downloaded_file,
         .sub_path = file_name,
     });
+    defer cwd.deleteFile(file_name) catch {};
 
     allocator.free(downloaded_file);
 
@@ -270,8 +271,6 @@ pub fn main() !void {
             printlnf("\n> " ++ ansi.Fg.Green ++ "Changelog: " ++ ansi.Fg.Cyan ++ ZIG_REPO_COMPARE ++ "{s}..{s}", .{ zig_commit.?, new_nightly_commit_hash.? });
         }
     }
-
-    cwd.deleteFile(file_name) catch {};
 }
 
 fn print(comptime msg: []const u8) void {

@@ -54,10 +54,10 @@ pub fn main() !void {
 
     const query_version: []const u8 = args[1];
 
-    if (std.mem.eql(u8, query_version, "help")) {
+    if (std.ascii.eqlIgnoreCase(query_version, "help")) {
         println(HELP_MESSAGE);
         return;
-    } else if (std.mem.eql(u8, query_version, "system")) {
+    } else if (std.ascii.eqlIgnoreCase(query_version, "system")) {
         printlnf("{s}-{s}", .{ ARCH, OS });
         return;
     }
@@ -139,7 +139,7 @@ pub fn main() !void {
 
     const zig_index = zig_index_json.?;
 
-    const is_nightly = std.mem.eql(u8, query_version, "nightly") or std.mem.eql(u8, query_version, "master");
+    const is_nightly = std.ascii.eqlIgnoreCase(query_version, "nightly") or std.ascii.eqlIgnoreCase(query_version, "master");
     var new_nightly_commit_hash: ?[]const u8 = null;
 
     const target_version = blk: {
@@ -167,7 +167,7 @@ pub fn main() !void {
             }
 
             break :blk master;
-        } else if (std.mem.eql(u8, query_version, "latest")) {
+        } else if (std.ascii.eqlIgnoreCase(query_version, "latest")) {
             const keys = zig_index.value.object.keys();
 
             // Dirty way to get latest version
@@ -186,7 +186,7 @@ pub fn main() !void {
             }
 
             break :blk latest_version;
-        } else if (std.mem.eql(u8, query_version, "list")) {
+        } else if (std.ascii.eqlIgnoreCase(query_version, "list")) {
             println("> Available versions:");
             for (zig_index.value.object.keys(), 0..) |key, idx| {
                 if (key.len == 0) continue;

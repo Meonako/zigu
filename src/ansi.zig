@@ -74,7 +74,11 @@ pub const Fg = struct {
 
     /// # Example
     /// ```zig
-    /// std.io.getStdOut().writer().print(ansi.Fg.formatRgb(120, 120, 120) ++ "Hello, World!", .{}) catch {};
+    /// const stdout = std.io.getStdOut().writer();
+    ///
+    /// stdout.print(ansi.Fg.formatRgb(120, 120, 120) ++ "Hello, World!", .{}) catch {};
+    /// stdout.print(ansi.Fg.rgb("Hello, World!", 120, 120, 120), .{}) catch {};
+    /// stdout.print(std.fmt.comptimePrint("{s}Hello, World!", .{ansi.Fg.rgb("", 120, 120, 120)}), .{}) catch {};
     /// ```
     pub fn formatRgb(r: u8, g: u8, b: u8) []const u8 {
         return std.fmt.comptimePrint("\x1b[38;2;{d};{d};{d}m", .{ r, g, b });

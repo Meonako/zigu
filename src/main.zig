@@ -140,6 +140,7 @@ pub fn main() !void {
     const zig_index = zig_index_json.?;
 
     const is_nightly = std.mem.eql(u8, query_version, "nightly") or std.mem.eql(u8, query_version, "master");
+    var new_nightly_commit_hash: ?[]const u8 = null;
 
     const target_version = blk: {
         if (is_nightly) {
@@ -148,15 +149,21 @@ pub fn main() !void {
                 return;
             };
 
-            const master_version = master.object.get("version").?;
-            printlnf("> Nightly version: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset, .{master_version.string});
+            const master_version = master.object.get("version").?.string;
+            printlnf("> Nightly version: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset, .{master_version});
 
             const master_date = master.object.get("date").?;
             printlnf("> Nightly version date: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset ++ "\n", .{master_date.string});
 
-            if (zig_version != null and std.mem.eql(u8, master_version.string, zig_version.?.string)) {
+            if (zig_version != null and std.mem.eql(u8, master_version, zig_version.?.string)) {
                 println("> " ++ ansi.Fg.Green ++ "You are using the latest nightly version" ++ ansi.Reset);
                 return;
+            }
+
+            if (is_nightly and std.mem.containsAtLeast(u8, master_version, 1, "+")) {
+                var iter = std.mem.splitScalar(u8, master_version, '+');
+                _ = iter.next().?;
+                new_nightly_commit_hash = iter.next();
             }
 
             break :blk master;
@@ -257,15 +264,10 @@ pub fn main() !void {
 
         if (is_nightly and
             std.mem.containsAtLeast(u8, file_name, 1, "+") and
-            zig_commit != null)
-        blk: {
-            var iter = std.mem.splitScalar(u8, file_name, '+');
-            _ = iter.next().?;
-
-            const commit_and_ext = iter.next() orelse break :blk;
-            const commit_hash = path.stem(commit_and_ext);
-
-            printlnf("\n> Changelog: {s}{s}..{s}", .{ ZIG_REPO_COMPARE, zig_commit.?, commit_hash });
+            zig_commit != null and
+            new_nightly_commit_hash != null)
+        {
+            printlnf("\n> " ++ ansi.Fg.Green ++ "Changelog: " ++ ansi.Fg.Cyan ++ ZIG_REPO_COMPARE ++ "{s}..{s}", .{ zig_commit.?, new_nightly_commit_hash.? });
         }
     }
 

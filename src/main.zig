@@ -32,7 +32,8 @@ const HELP_MESSAGE =
 const OS = @tagName(builtin.os.tag);
 const ARCH = @tagName(builtin.cpu.arch);
 
-const LIGTHBLUE = ansi.Fg.formatRgb(249, 178, 255);
+const LIGHTBLUE_STRING_TEMPLATE = ansi.Fg.rgb("{s}", 249, 178, 255);
+const GREEN_STRING_TEMPLATE = ansi.Fg.green("{s}", null);
 
 /// Windows can't have global stdout so we need to declare it in `main`
 var stdout_writer: io.Writer(fs.File, std.os.WriteError, fs.File.write) = undefined;
@@ -86,9 +87,17 @@ pub fn main() !void {
     allocator.free(result.stderr);
     defer allocator.free(result.stdout);
 
-    if (result.term.Exited != 0) {
-        printlnf("{s}Zig exit with code: {s}{d}", .{ ansi.Fg.Red, ansi.Fg.Yellow, result.term.Exited });
-        return;
+    switch (result.term) {
+        .Exited => |code| {
+            if (code != 0) {
+                printlnf(ansi.Fg.red("Zig exit with code: ", null) ++ ansi.Fg.yellow("{d}", null), .{result.term.Exited});
+                return;
+            }
+        },
+        else => {
+            printlnf(ansi.Fg.red("Unexpected error with Zig: ", null) ++ ansi.Fg.yellow("{s}", null), .{@tagName(result.term)});
+            return;
+        },
     }
 
     const zig_output = try json.parseFromSlice(json.Value, allocator, result.stdout, .{});
@@ -99,10 +108,10 @@ pub fn main() !void {
     if (zig_version) |v| {
         const vstr = v.string;
 
-        printlnf("< Current Zig Version: " ++ LIGTHBLUE ++ "{s}" ++ ansi.Reset, .{vstr});
+        printlnf("< " ++ ansi.Fg.high_blue("Current Zig Version: ", null) ++ LIGHTBLUE_STRING_TEMPLATE, .{vstr});
 
         if (std.mem.eql(u8, vstr, query_version)) {
-            println("> " ++ ansi.Fg.Green ++ "You are using the latest version" ++ ansi.Reset);
+            println("> " ++ ansi.Fg.green("You are using the latest version", null));
             return;
         } else if (std.mem.containsAtLeast(u8, vstr, 1, "+")) {
             var iter = std.mem.splitScalar(u8, vstr, '+');
@@ -123,12 +132,12 @@ pub fn main() !void {
     if (std.mem.eql(u8, zig_folder, "zig")) {
         println("Zig folder not found. Will extract to `zig` in current directory");
     } else {
-        printlnf("< Zig folder: " ++ LIGTHBLUE ++ "{s}" ++ ansi.Reset, .{zig_folder});
+        printlnf("< " ++ ansi.Fg.high_blue("Zig folder: ", null) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_folder});
     }
 
     var str_buffer: [ARCH.len + OS.len + 1]u8 = undefined;
     const system = try std.fmt.bufPrint(&str_buffer, "{s}-{s}", .{ ARCH, OS });
-    printlnf("< Your system is: " ++ LIGTHBLUE ++ "{s}" ++ ansi.Reset ++ "\n", .{system});
+    printlnf("< " ++ ansi.Fg.high_blue("Your system is: ", null) ++ LIGHTBLUE_STRING_TEMPLATE ++ "\n", .{system});
 
     request_thread.join();
 
@@ -145,18 +154,18 @@ pub fn main() !void {
     const target_version = blk: {
         if (is_nightly) {
             const master = zig_index.value.object.get("master") orelse {
-                println("Nightly version not found");
+                println(ansi.Fg.red("Nightly version not found", null));
                 return;
             };
 
             const master_version = master.object.get("version").?.string;
-            printlnf("> Nightly version: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset, .{master_version});
+            printlnf("> " ++ ansi.Fg.high_magenta("Nightly version: ", null) ++ GREEN_STRING_TEMPLATE, .{master_version});
 
             const master_date = master.object.get("date").?;
-            printlnf("> Nightly version date: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset ++ "\n", .{master_date.string});
+            printlnf("> " ++ ansi.Fg.high_magenta("Nightly version date: ", null) ++ GREEN_STRING_TEMPLATE ++ "\n", .{master_date.string});
 
             if (zig_version != null and std.mem.eql(u8, master_version, zig_version.?.string)) {
-                println("> " ++ ansi.Fg.Green ++ "You are using the latest nightly version" ++ ansi.Reset);
+                println("> " ++ ansi.Fg.green("You are using the latest nightly version", null));
                 return;
             }
 
@@ -174,14 +183,14 @@ pub fn main() !void {
             // MAYBE:  TODO:  Implement version sorting so we can get latest version properly
             const latest = keys[1];
 
-            printlnf("> Latest version: " ++ ansi.Fg.Green ++ "{s}", .{latest});
+            printlnf("> " ++ ansi.Fg.high_cyan("Latest version: ", null) ++ GREEN_STRING_TEMPLATE, .{latest});
 
             const latest_version = zig_index.value.object.get(latest).?;
             const latest_date = latest_version.object.get("date").?;
-            printlnf("> Latest version date: " ++ ansi.Fg.Green ++ "{s}\n", .{latest_date.string});
+            printlnf("> " ++ ansi.Fg.high_cyan("Latest version date: ", null) ++ GREEN_STRING_TEMPLATE ++ "\n", .{latest_date.string});
 
             if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
-                println("> " ++ ansi.Fg.Green ++ "You are using the latest stable version" ++ ansi.Reset);
+                println("> " ++ ansi.Fg.green("You are using the latest stable version", null));
                 return;
             }
 
@@ -211,15 +220,15 @@ pub fn main() !void {
                     }
                 }
 
-                println(ansi.Fg.Red ++ "Version not found" ++ ansi.Reset);
+                println("> " ++ ansi.Fg.red("Version not found", null));
                 return;
             };
 
             const date = version_obj.object.get("date").?;
-            printlnf("> Version: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset ++ "\n> Version date: " ++ ansi.Fg.Green ++ "{s}" ++ ansi.Reset ++ "\n", .{ resolve_version, date.string });
+            printlnf("> " ++ ansi.Fg.yellow("Version: ", null) ++ GREEN_STRING_TEMPLATE ++ "\n> " ++ ansi.Fg.yellow("Version date: ", null) ++ GREEN_STRING_TEMPLATE ++ "\n", .{ resolve_version, date.string });
 
             if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?.string)) {
-                println("> " ++ ansi.Fg.Green ++ "You are using the same version" ++ ansi.Reset);
+                println("> " ++ ansi.Fg.green("You are using the same version", null));
                 return;
             }
 
@@ -228,12 +237,12 @@ pub fn main() !void {
     };
 
     const build = target_version.object.get(system) orelse {
-        printlnf(ansi.Fg.Red ++ "This version is not available for your system ({s})" ++ ansi.Reset, .{system});
+        printlnf("> " ++ ansi.Fg.red("This version is not available for your system ({s})", null), .{system});
         return;
     };
     const file_url = build.object.get("tarball").?.string;
 
-    printf("< " ++ ansi.Fg.Yellow ++ "Downloading " ++ ansi.Fg.Magenta ++ "{s}" ++ ansi.Reset ++ "...", .{file_url});
+    printf("< " ++ ansi.Fg.yellow("Downloading ", null) ++ ansi.Fg.magenta("{s}", .Bold) ++ "...", .{file_url});
 
     const downloaded_file = try get(&client, &headers, file_url);
 
@@ -250,7 +259,7 @@ pub fn main() !void {
 
     try cwd.makePath(zig_folder);
 
-    printf(ansi.ClearLine ++ "\r> " ++ ansi.Fg.Yellow ++ "Extracting to " ++ ansi.Fg.Magenta ++ "{s}" ++ ansi.Reset ++ "...", .{zig_folder});
+    printf(ansi.ClearLine ++ "\r> " ++ ansi.Fg.yellow("Extracting to ", null) ++ ansi.Fg.magenta("{s}", .Bold) ++ "...", .{zig_folder});
 
     const tar = try std.process.Child.run(.{
         .allocator = allocator,
@@ -261,14 +270,14 @@ pub fn main() !void {
         println("\rSomething went wrong while extracting tarball");
         printlnf("Tar error: {s}", .{tar.stderr});
     } else {
-        printlnf(ansi.ClearLine ++ "\r> " ++ ansi.Fg.Green ++ "Successfully extracted to " ++ ansi.Fg.Magenta ++ "{s}" ++ ansi.Reset, .{zig_folder});
+        printlnf(ansi.ClearLine ++ "\r> " ++ ansi.Fg.green("Successfully extracted to ", null) ++ ansi.Fg.magenta("{s}", .Bold), .{zig_folder});
 
         if (is_nightly and
             std.mem.containsAtLeast(u8, file_name, 1, "+") and
             zig_commit != null and
             new_nightly_commit_hash != null)
         {
-            printlnf("\n> " ++ ansi.Fg.Green ++ "Changelog: " ++ ansi.Fg.Cyan ++ ZIG_REPO_COMPARE ++ "{s}..{s}", .{ zig_commit.?, new_nightly_commit_hash.? });
+            printlnf("\n> " ++ ansi.Fg.green("Changelog: ", null) ++ ansi.Fg.cyan(ZIG_REPO_COMPARE ++ "{s}..{s}", null), .{ zig_commit.?, new_nightly_commit_hash.? });
         }
     }
 }

@@ -37,23 +37,23 @@ pub const Fg = struct {
     const template = "{s}{d};{s}m{s}{s}";
     const RGB_TEMPLATE = "\x1b[38;2;{d};{d};{d}m";
 
-    pub const BLACK_CODE = "30";
-    pub const RED_CODE = "31";
-    pub const GREEN_CODE = "32";
-    pub const YELLOW_CODE = "33";
-    pub const BLUE_CODE = "34";
-    pub const MAGENTA_CODE = "35";
-    pub const CYAN_CODE = "36";
-    pub const WHITE_CODE = "37";
+    const BLACK_CODE = "30";
+    const RED_CODE = "31";
+    const GREEN_CODE = "32";
+    const YELLOW_CODE = "33";
+    const BLUE_CODE = "34";
+    const MAGENTA_CODE = "35";
+    const CYAN_CODE = "36";
+    const WHITE_CODE = "37";
 
-    pub const HIGH_BLACK_CODE = "90";
-    pub const HIGH_RED_CODE = "91";
-    pub const HIGH_GREEN_CODE = "92";
-    pub const HIGH_YELLOW_CODE = "93";
-    pub const HIGH_BLUE_CODE = "94";
-    pub const HIGH_MAGENTA_CODE = "95";
-    pub const HIGH_CYAN_CODE = "96";
-    pub const HIGH_WHITE_CODE = "97";
+    const HIGH_BLACK_CODE = "90";
+    const HIGH_RED_CODE = "91";
+    const HIGH_GREEN_CODE = "92";
+    const HIGH_YELLOW_CODE = "93";
+    const HIGH_BLUE_CODE = "94";
+    const HIGH_MAGENTA_CODE = "95";
+    const HIGH_CYAN_CODE = "96";
+    const HIGH_WHITE_CODE = "97";
 
     /// Colorize text with color code and reset at the end
     pub fn colorize(text: []const u8, color: []const u8, style: ?Style) []const u8 {
@@ -64,101 +64,63 @@ pub const Fg = struct {
     }
 
     pub fn black(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), BLACK_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), BLACK_CODE, text, RESET });
+        return colorize(text, BLACK_CODE, style);
     }
 
     pub fn red(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), RED_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), RED_CODE, text, RESET });
+        return colorize(text, RED_CODE, style);
     }
 
     pub fn green(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), GREEN_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), GREEN_CODE, text, RESET });
+        return colorize(text, GREEN_CODE, style);
     }
 
     pub fn yellow(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), YELLOW_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), YELLOW_CODE, text, RESET });
+        return colorize(text, YELLOW_CODE, style);
     }
 
     pub fn blue(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), BLUE_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), BLUE_CODE, text, RESET });
+        return colorize(text, BLUE_CODE, style);
     }
 
     pub fn magenta(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), MAGENTA_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), MAGENTA_CODE, text, RESET });
+        return colorize(text, MAGENTA_CODE, style);
     }
 
     pub fn cyan(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), CYAN_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), CYAN_CODE, text, RESET });
+        return colorize(text, CYAN_CODE, style);
+    }
+
+    pub fn white(comptime text: []const u8, style: ?Style) []const u8 {
+        return colorize(text, WHITE_CODE, style);
     }
 
     pub fn high_black(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_BLACK_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_BLACK_CODE, text, RESET });
+        return colorize(text, HIGH_BLACK_CODE, style);
     }
 
     pub fn high_red(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_RED_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_RED_CODE, text, RESET });
+        return colorize(text, HIGH_RED_CODE, style);
     }
 
     pub fn high_green(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_GREEN_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_GREEN_CODE, text, RESET });
+        return colorize(text, HIGH_GREEN_CODE, style);
     }
 
     pub fn high_yellow(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_YELLOW_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_YELLOW_CODE, text, RESET });
+        return colorize(text, HIGH_YELLOW_CODE, style);
     }
 
     pub fn high_blue(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_BLUE_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_BLUE_CODE, text, RESET });
+        return colorize(text, HIGH_BLUE_CODE, style);
     }
 
     pub fn high_magenta(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_MAGENTA_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_MAGENTA_CODE, text, RESET });
+        return colorize(text, HIGH_MAGENTA_CODE, style);
     }
 
     pub fn high_cyan(comptime text: []const u8, style: ?Style) []const u8 {
-        if (style) |s| {
-            return comp(template, .{ PREFIX, @intFromEnum(s), HIGH_CYAN_CODE, text, RESET });
-        }
-        return comp(template, .{ PREFIX, @intFromEnum(Style.Normal), HIGH_CYAN_CODE, text, RESET });
+        return colorize(text, HIGH_CYAN_CODE, style);
     }
 
     pub fn rgb(comptime text: []const u8, r: u8, g: u8, b: u8) []const u8 {

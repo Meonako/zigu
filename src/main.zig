@@ -202,7 +202,7 @@ pub fn main() !void {
 
                 if (std.mem.eql(u8, key, "master")) {
                     const nightly_version = zig_index.value.object.get("master").?.object.get("version").?.string;
-                    printf("\t" ++ ansi.Fg.high_magenta("Nightly: ", .Bold) ++ ansi.Fg.yellow("{s}", null), .{nightly_version});
+                    printlnf("\t" ++ ansi.Fg.high_magenta("Nightly: ", .Bold) ++ ansi.Fg.yellow("{s}", null), .{nightly_version});
                 } else {
                     printf("\t" ++ LIGHTBLUE_STRING_TEMPLATE, .{key});
                 }

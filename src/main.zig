@@ -196,11 +196,16 @@ pub fn main() !void {
 
             break :blk latest_version;
         } else if (std.ascii.eqlIgnoreCase(query_version, "list")) {
-            println("> Available versions:");
+            println(std.fmt.comptimePrint("> {s}:", .{ansi.Fg.green("Available versions", .Underline)}));
             for (zig_index.value.object.keys(), 0..) |key, idx| {
                 if (key.len == 0) continue;
 
-                printf("\t{s}", .{key});
+                if (std.mem.eql(u8, key, "master")) {
+                    const nightly_version = zig_index.value.object.get("master").?.object.get("version").?.string;
+                    printf("\t" ++ ansi.Fg.high_magenta("Nightly: ", .Bold) ++ ansi.Fg.yellow("{s}", null), .{nightly_version});
+                } else {
+                    printf("\t" ++ LIGHTBLUE_STRING_TEMPLATE, .{key});
+                }
 
                 if (idx % 3 == 0) {
                     print("\n");

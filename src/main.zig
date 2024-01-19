@@ -32,6 +32,8 @@ const HELP_MESSAGE = std.fmt.comptimePrint(
 const OS = @tagName(builtin.os.tag);
 const ARCH = @tagName(builtin.cpu.arch);
 
+const SYSTEM = std.fmt.comptimePrint("{s}-{s}", .{ ARCH, OS });
+
 const LIGHTBLUE_STRING_TEMPLATE = ansi.Fg.rgb("{s}", 249, 178, 255);
 const GREEN_STRING_TEMPLATE = ansi.Fg.green("{s}", null);
 
@@ -135,9 +137,7 @@ pub fn main() !void {
         printlnf("< " ++ ansi.Fg.high_blue("Zig folder: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_folder});
     }
 
-    var str_buffer: [ARCH.len + OS.len + 1]u8 = undefined;
-    const system = try std.fmt.bufPrint(&str_buffer, "{s}-{s}", .{ ARCH, OS });
-    printlnf("< " ++ ansi.Fg.high_blue("Your system is: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE ++ "\n", .{system});
+    printlnf("< " ++ ansi.Fg.high_blue("Your system is: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE ++ "\n", .{SYSTEM});
 
     request_thread.join();
 
@@ -241,8 +241,8 @@ pub fn main() !void {
         }
     };
 
-    const build = target_version.object.get(system) orelse {
-        printlnf("> " ++ ansi.Fg.red("This version is not available for your system ({s})", null), .{system});
+    const build = target_version.object.get(SYSTEM) orelse {
+        printlnf("> " ++ ansi.Fg.red("This version is not available for your system ({s})", null), .{SYSTEM});
         return;
     };
     const file_url = build.object.get("tarball").?.string;

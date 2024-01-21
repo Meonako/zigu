@@ -29,10 +29,8 @@ const HELP_MESSAGE = std.fmt.comptimePrint(
     \\      zigu 0.10               Will resolve to latest 0.10 version (i.e. 0.10.1) if any
     \\      zigu 1                  Will resolve to latest 1.x.x version if any 
 , .{ ansi.Fg.white("Usage", .Underline), ansi.Fg.white("Commands", .Underline), ansi.Fg.white("Examples", .Underline) });
-const OS = @tagName(builtin.os.tag);
-const ARCH = @tagName(builtin.cpu.arch);
 
-const SYSTEM = std.fmt.comptimePrint("{s}-{s}", .{ ARCH, OS });
+const SYSTEM = std.fmt.comptimePrint("{s}-{s}", .{ @tagName(builtin.cpu.arch), @tagName(builtin.os.tag) });
 
 const LIGHTBLUE_STRING_TEMPLATE = ansi.Fg.rgb("{s}", 249, 178, 255);
 const GREEN_STRING_TEMPLATE = ansi.Fg.green("{s}", null);
@@ -61,7 +59,7 @@ pub fn main() !void {
         println(HELP_MESSAGE);
         return;
     } else if (std.ascii.eqlIgnoreCase(query_version, "system")) {
-        printlnf("{s}-{s}", .{ ARCH, OS });
+        println(SYSTEM);
         return;
     }
 

@@ -123,6 +123,12 @@ pub const Fg = struct {
         return colorize(text, HIGH_CYAN_CODE, style);
     }
 
+    /// # Example
+    /// ```zig
+    /// const stdout = std.io.getStdOut().writer();
+    ///
+    /// stdout.print(ansi.Fg.rgb("Hello in RGB", 100, 10, 200), .{})
+    /// ```
     pub fn rgb(comptime text: []const u8, r: u8, g: u8, b: u8) []const u8 {
         return formatRgb(r, g, b) ++ text ++ RESET;
     }

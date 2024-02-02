@@ -108,7 +108,7 @@ pub fn main() !void {
     if (zig_version) |v| {
         const vstr = v.string;
 
-        printlnf("< " ++ ansi.Fg.high_blue("Current Zig Version: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{vstr});
+        printlnf("< " ++ ansi.Fg.highBlue("Current Zig Version: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{vstr});
 
         if (std.mem.eql(u8, vstr, query_version)) {
             println("> " ++ ansi.Fg.green("You are using the latest version", null));
@@ -132,10 +132,10 @@ pub fn main() !void {
     if (std.mem.eql(u8, zig_folder, "zig")) {
         println("Zig folder not found. Will extract to `zig` in current directory");
     } else {
-        printlnf("< " ++ ansi.Fg.high_blue("Zig folder: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_folder});
+        printlnf("< " ++ ansi.Fg.highBlue("Zig folder: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_folder});
     }
 
-    printlnf("< " ++ ansi.Fg.high_blue("Your system is: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE ++ "\n", .{SYSTEM});
+    printlnf("< " ++ ansi.Fg.highBlue("Your system is: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE ++ "\n", .{SYSTEM});
 
     request_thread.join();
 
@@ -157,10 +157,10 @@ pub fn main() !void {
             };
 
             const master_version = master.object.get("version").?.string;
-            printlnf("> " ++ ansi.Fg.high_magenta("Nightly version: ", .Bold) ++ GREEN_STRING_TEMPLATE, .{master_version});
+            printlnf("> " ++ ansi.Fg.highMagenta("Nightly version: ", .Bold) ++ GREEN_STRING_TEMPLATE, .{master_version});
 
             const master_date = master.object.get("date").?;
-            printlnf("> " ++ ansi.Fg.high_magenta("Nightly version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{master_date.string});
+            printlnf("> " ++ ansi.Fg.highMagenta("Nightly version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{master_date.string});
 
             if (zig_version != null and std.mem.eql(u8, master_version, zig_version.?.string)) {
                 println("> " ++ ansi.Fg.green("You are using the latest nightly version", null));
@@ -181,11 +181,11 @@ pub fn main() !void {
             // MAYBE:  TODO:  Implement version sorting so we can get latest version properly
             const latest = keys[1];
 
-            printlnf("> " ++ ansi.Fg.high_cyan("Latest version: ", .Bold) ++ GREEN_STRING_TEMPLATE, .{latest});
+            printlnf("> " ++ ansi.Fg.highCyan("Latest version: ", .Bold) ++ GREEN_STRING_TEMPLATE, .{latest});
 
             const latest_version = zig_index.value.object.get(latest).?;
             const latest_date = latest_version.object.get("date").?;
-            printlnf("> " ++ ansi.Fg.high_cyan("Latest version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{latest_date.string});
+            printlnf("> " ++ ansi.Fg.highCyan("Latest version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{latest_date.string});
 
             if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
                 println("> " ++ ansi.Fg.green("You are using the latest stable version", null));
@@ -200,7 +200,7 @@ pub fn main() !void {
 
                 if (std.mem.eql(u8, key, "master")) {
                     const nightly_version = zig_index.value.object.get("master").?.object.get("version").?.string;
-                    printlnf("\t" ++ ansi.Fg.high_magenta("Nightly: ", .Bold) ++ ansi.Fg.yellow("{s}", null), .{nightly_version});
+                    printlnf("\t" ++ ansi.Fg.highMagenta("Nightly: ", .Bold) ++ ansi.Fg.yellow("{s}", null), .{nightly_version});
                 } else {
                     printf("\t" ++ LIGHTBLUE_STRING_TEMPLATE, .{key});
                 }

@@ -78,60 +78,65 @@ pub fn main() !void {
 
     const request_thread = try std.Thread.spawn(.{}, getZigJsonIndex, .{ &client, &headers, &zig_index_json });
 
-    // TODO:  Find a way to capture only stdout
-    const result = try std.process.Child.run(.{
-        .allocator = allocator,
-        .argv = &[_][]const u8{ "zig", "env" },
-    });
-    // We don't need stderr
-    allocator.free(result.stderr);
-    defer allocator.free(result.stdout);
-
-    switch (result.term) {
-        .Exited => |code| {
-            if (code != 0) {
-                printlnf(ansi.Fg.red("Zig exit with code: ", null) ++ ansi.Fg.yellow("{d}", null), .{result.term.Exited});
-                return;
-            }
-        },
-        else => {
-            printlnf(ansi.Fg.red("Unexpected error with Zig: ", null) ++ ansi.Fg.yellow("{s}", null), .{@tagName(result.term)});
-            return;
-        },
-    }
-
-    const zig_output = try json.parseFromSlice(json.Value, allocator, result.stdout, .{});
-    defer zig_output.deinit();
-
-    const zig_version = zig_output.value.object.get("version");
+    var zig_version: ?[]const u8 = null;
     var zig_commit: ?[]const u8 = null;
-    if (zig_version) |v| {
-        const vstr = v.string;
+    var zig_folder: []const u8 = undefined;
+    var zig_output: ?json.Parsed(json.Value) = null;
+    defer if (zig_output) |o| o.deinit();
 
-        printlnf("< " ++ ansi.Fg.highBlue("Current Zig Version: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{vstr});
+    blk: {
+        // TODO:  Find a way to capture only stdout
+        const result = std.process.Child.run(.{
+            .allocator = allocator,
+            .argv = &[_][]const u8{ "zig", "env" },
+        }) catch |err| {
+            switch (err) {
+                error.FileNotFound => {
+                    zig_folder = "zig";
+                    println(std.fmt.comptimePrint("! {s}", .{ansi.Fg.red("Zig folder not found. Will extract to `zig` in current directory", .Bold)}));
+                    break :blk;
+                },
+                else => return err,
+            }
+        };
+        // We don't need stderr
+        allocator.free(result.stderr);
+        defer allocator.free(result.stdout);
 
-        if (std.mem.eql(u8, vstr, query_version)) {
-            println("> " ++ ansi.Fg.green("You are using the latest version", null));
-            return;
-        } else if (std.mem.containsAtLeast(u8, vstr, 1, "+")) {
-            var iter = std.mem.splitScalar(u8, vstr, '+');
-            _ = iter.next().?;
-            zig_commit = iter.next();
+        switch (result.term) {
+            .Exited => |code| {
+                if (code != 0) {
+                    printlnf(ansi.Fg.red("! Zig exit with code: ", null) ++ ansi.Fg.yellow("{d}", null), .{result.term.Exited});
+                    return;
+                }
+            },
+            else => {
+                printlnf(ansi.Fg.red("! Unexpected error with Zig: ", null) ++ ansi.Fg.yellow("{s}", null), .{@tagName(result.term)});
+                return;
+            },
         }
-    }
 
-    const zig_executable = zig_output.value.object.get("zig_exe");
-    const zig_folder = blk: {
-        if (zig_executable) |f| {
-            break :blk path.dirname(f.string) orelse "zig";
-        } else {
-            break :blk "zig";
+        zig_output = try json.parseFromSlice(json.Value, allocator, result.stdout, .{});
+        // defer zig_output.deinit();
+
+        const zv = zig_output.?.value.object.get("version");
+        if (zv) |v| {
+            zig_version = v.string;
+
+            printlnf("< " ++ ansi.Fg.highBlue("Current Zig Version: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_version.?});
+
+            if (std.mem.eql(u8, zig_version.?, query_version)) {
+                println("> " ++ ansi.Fg.green("You are using the latest version", null));
+                return;
+            } else if (std.mem.containsAtLeast(u8, zig_version.?, 1, "+")) {
+                var iter = std.mem.splitScalar(u8, zig_version.?, '+');
+                _ = iter.next().?;
+                zig_commit = iter.next();
+            }
         }
-    };
 
-    if (std.mem.eql(u8, zig_folder, "zig")) {
-        println("Zig folder not found. Will extract to `zig` in current directory");
-    } else {
+        const zig_executable = zig_output.?.value.object.get("zig_exe").?;
+        zig_folder = path.dirname(zig_executable.string) orelse "zig";
         printlnf("< " ++ ansi.Fg.highBlue("Zig folder: ", .Bold) ++ LIGHTBLUE_STRING_TEMPLATE, .{zig_folder});
     }
 
@@ -162,7 +167,7 @@ pub fn main() !void {
             const master_date = master.object.get("date").?;
             printlnf("> " ++ ansi.Fg.highMagenta("Nightly version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{master_date.string});
 
-            if (zig_version != null and std.mem.eql(u8, master_version, zig_version.?.string)) {
+            if (zig_version != null and std.mem.eql(u8, master_version, zig_version.?)) {
                 println("> " ++ ansi.Fg.green("You are using the latest nightly version", null));
                 return;
             }
@@ -187,7 +192,7 @@ pub fn main() !void {
             const latest_date = latest_version.object.get("date").?;
             printlnf("> " ++ ansi.Fg.highCyan("Latest version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{latest_date.string});
 
-            if (zig_version != null and std.mem.eql(u8, latest, zig_version.?.string)) {
+            if (zig_version != null and std.mem.eql(u8, latest, zig_version.?)) {
                 println("> " ++ ansi.Fg.green("You are using the latest stable version", null));
                 return;
             }
@@ -230,7 +235,7 @@ pub fn main() !void {
             const date = version_obj.object.get("date").?;
             printlnf("> " ++ ansi.Fg.yellow("Version: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n> " ++ ansi.Fg.yellow("Version date: ", .Bold) ++ GREEN_STRING_TEMPLATE ++ "\n", .{ resolve_version, date.string });
 
-            if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?.string)) {
+            if (zig_version != null and std.mem.eql(u8, resolve_version, zig_version.?)) {
                 println("> " ++ ansi.Fg.green("You are using the same version", null));
                 return;
             }

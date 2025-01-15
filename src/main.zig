@@ -55,7 +55,7 @@ pub fn main() !void {
 
     const query_version: []const u8 = args[1];
 
-    if (std.ascii.eqlIgnoreCase(query_version, "help")) {
+    if (std.ascii.eqlIgnoreCase(query_version, "help") or std.ascii.eqlIgnoreCase(query_version, "-h")) {
         println(HELP_MESSAGE);
         return;
     } else if (std.ascii.eqlIgnoreCase(query_version, "system")) {
